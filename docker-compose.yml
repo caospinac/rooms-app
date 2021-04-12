@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+
+  nginx:
+    build: ./nginx
+    ports:
+      - 80:80
+      - 443:443
+    links:
+      - peer
+      - web
+      - gui
+  
+  peer:
+    image: peerjs/peerjs-server
+    command: peerjs --port 9000
+    ports:
+      - 9000:9000
+
+  web:
+    image: web
+    build: ./web
+    working_dir: /app
+    volumes:
+      - ./web:/app
+    ports:
+      - 8080:8080
+    environment:
+      VIRTUAL_HOST: "*/web, */web/*"
+      VIRTUAL_HOST_WEIGHT: 10
+
+  gui:
+    image: gui
+    build: ./gui
+    working_dir: /app
+    volumes:
+      - ./gui:/app
+    ports:
+      - 3000:3000
+    environment:
+      NODE_ENV: "development"
+      VIRTUAL_HOST: "*/*"
+    depends_on:
+      - web
+      - peer
