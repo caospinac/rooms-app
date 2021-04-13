@@ -3,16 +3,17 @@ import useUserMedia from '../hooks/userMedia'
 import socketIOClient from 'socket.io-client'
 import styles from './App.module.css'
 import Peer from 'peerjs'
-import Video from './Video'
+import useMap from '../hooks/map'
+// TODO: enable video
+// import Video from './Video'
 
 const id = 'room'
 
 function Room() {
   const [stream, loadingMedia, errorMedia] = useUserMedia()
   const [myUserId, setMyUserId] = useState()
-  const [videos, setVideos] = useState({})
-  const [videoList, setVideoList] = useState({})
-  const [peers, setPeers] = useState({})
+  const [videos, setVideo, removeVideo] = useMap()
+  const [peers, setPeer] = useMap()
 
   const peer = useMemo(() => {
     return new Peer(undefined, {
@@ -24,24 +25,22 @@ function Room() {
 
   const socket = useMemo(() => {
     return socketIOClient({
-      path: '/web/socket.io'
+      path: '/web/socket.io',
     })
   }, [])
 
-  const addVideoStream = (userId, videoStream) => {
-    setVideos(prev => ({ ...prev, [userId]: videoStream }))
+  const addVideoStream = (videoStream) => {
+    // const videoId = id || Math.random().toString(36).substring(7)
+    // console.log(videoId)
+    setVideo(videoStream.id, videoStream)
   }
 
   const removeVideoStream = (userId) => {
-    setVideos(({ [userId]: _, ...rest }) => rest)
+    removeVideo(userId)
   }
 
   useEffect(() => {
-    setVideoList(Object.values(videos))
-  }, [videos])
-
-  useEffect(() => {
-    if (!(peer, socket)) return
+    if (!(peer && socket)) return
 
     const listener = userId => {
       setMyUserId(userId)
@@ -53,11 +52,12 @@ function Room() {
   }, [peer, socket])
 
   useEffect(() => {
-    if (!(peer, socket)) return
+    if (!(peer && socket)) return
 
     const listener = userId => {
-      if (peers[userId]) {
-        peers[userId].close()
+      let peer = peers.get(userId)
+      if (peer) {
+        peer.close()
       }
     }
     socket.on('user-disconnected', listener)
@@ -66,12 +66,12 @@ function Room() {
   }, [peer, socket, peers])
 
   useEffect(() => {
-    if (!(stream, myUserId, peer)) return
+    if (!(stream && myUserId && peer)) return
 
     const listener = call => {
       call.answer(stream)
       call.on('stream', videoStream => {
-        addVideoStream(myUserId, videoStream)
+        addVideoStream(videoStream)
       })
     }
     peer.on('call', listener)
@@ -80,19 +80,21 @@ function Room() {
   }, [peer, myUserId, stream])
 
   useEffect(() => {
-    if (!(stream, peer, socket)) return
+    if (!(stream && peer && socket)) return
 
     // Connect to new user
+    // TODO: fix listener
     const listener = userId => {
       const call = peer.call(userId, stream)
 
       call.on('stream', videoStream => {
-        addVideoStream(userId, videoStream)
+        addVideoStream(videoStream)
+
+        call.on('close', () => {
+          removeVideoStream(videoStream.id)
+        })
       })
-      call.on('close', () => {
-        removeVideoStream(userId)
-      })
-      setPeers(prev => ({ ...prev, [userId]: call }))
+      setPeer(userId, call)
     }
 
     socket.on('user-connected', listener)
@@ -105,11 +107,11 @@ function Room() {
   useEffect(() => {
     if (!(stream)) return
 
-    addVideoStream(myUserId, stream)
-  }, [stream, myUserId])
+    addVideoStream(stream)
+  }, [stream])
 
 
-  if (loadingMedia || !(peer, socket)) {
+  if (loadingMedia || !(peer && socket)) {
     return <></>
   }
 
@@ -122,7 +124,8 @@ function Room() {
 
   return (
     <div className={styles.grid}>
-      {videoList.map((v, i) => <Video key={i} stream={v}></Video>)}
+      {JSON.stringify([...videos.values()])}
+      {/* {videosList.map((v, i) => <Video key={i} stream={v}></Video>)} */}
     </div>
   )
 }
