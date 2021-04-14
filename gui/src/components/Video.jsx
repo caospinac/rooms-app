@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import styles from './Video.module.css'
 
 import PropTypes from 'prop-types'
@@ -7,9 +7,11 @@ import PropTypes from 'prop-types'
 function Video({ stream, isOwn = false }) {
   const video = useRef()
 
-  if (stream && video.current && !video.current.srcObject) {
-    video.current.srcObject = stream
-  }
+  useEffect(() => {
+    if (stream && video.current && !video.current.srcObject) {
+      video.current.srcObject = stream
+    }
+  }, [stream])
 
   const handleCanPlay = () => {
     video.current.play()

@@ -4,8 +4,7 @@ import socketIOClient from 'socket.io-client'
 import styles from './App.module.css'
 import Peer from 'peerjs'
 import useMap from '../hooks/map'
-// TODO: enable video
-// import Video from './Video'
+import Video from './Video'
 
 const id = 'room'
 
@@ -15,11 +14,12 @@ function Room() {
   const [videos, setVideo, removeVideo] = useMap()
   const [peers, setPeer] = useMap()
 
+  const list = useMemo(() => [...videos.values()], [videos])
+
   const peer = useMemo(() => {
     return new Peer(undefined, {
       host: '/',
       path: '/peer',
-      port: 80,
     })
   }, [])
 
@@ -82,8 +82,6 @@ function Room() {
   useEffect(() => {
     if (!(stream && peer && socket)) return
 
-    // Connect to new user
-    // TODO: fix listener
     const listener = userId => {
       const call = peer.call(userId, stream)
 
@@ -121,11 +119,9 @@ function Room() {
     return <></>
   }
 
-
   return (
     <div className={styles.grid}>
-      {JSON.stringify([...videos.values()])}
-      {/* {videosList.map((v, i) => <Video key={i} stream={v}></Video>)} */}
+      {list.map((s) => <Video key={s.id} stream={s} isOwn={s.id === stream.id}></Video>)}
     </div>
   )
 }

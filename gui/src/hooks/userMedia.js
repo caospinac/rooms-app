@@ -7,7 +7,12 @@ const useUserMedia = () => {
 
   useEffect(() => {
     if (!stream) {
-      (navigator.mediaDevices || navigator).getUserMedia({ audio: true, video: true })
+      navigator.mediaDevices.getUserMedia = navigator.mediaDevices?.getUserMedia ||
+                                            navigator.getUserMedia ||
+                                            navigator.webkitGetUserMedia ||
+                                            navigator.mozGetUserMedia
+
+      navigator.mediaDevices.getUserMedia({ audio: true, video: true })
         .then(r => setStream(r))
         .catch(e => setError(e))
         .finally(() => setLoading(false))
